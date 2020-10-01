@@ -1,0 +1,5 @@
+extcolors
+Pillow
+opencv-python
+numpy
+matplotlib
