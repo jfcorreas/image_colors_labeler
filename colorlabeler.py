@@ -6,6 +6,7 @@ import numpy as np
 from skimage import io
 from skimage.color import rgb2lab, deltaE_cie76
 import random
+import string
 import matplotlib
 import matplotlib.pyplot as plt
 
@@ -66,7 +67,7 @@ def show_colors_list(img):
         cv2.rectangle(whiteblankimage, pt1=(x, y), pt2=(x+100, y-100), color=rgb_color, thickness=-1)
         cv2.putText(whiteblankimage, f"{rgb_color}", (x+5, y-40),
                     fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.4,
-                    color=(255, 255, 255), thickness=1)
+                    color=(200, 250, 200), thickness=1)
         if x < 400:
             x += 100
         else:
@@ -91,18 +92,39 @@ def pick_color(event, x, y, flags, param):
         cv2.imshow("mask", image_mask)
 
 
-def analize_image_zones(img, colors):
+def fill_image_with_text(img, text: str, color=(0, 0, 0)):
+    h = img.shape[0]
+    w = img.shape[1]
+
+    y_offset = int(h / 30)
+    x_offset = int(w / 30)
+
+    for y in range(0, h, y_offset):
+        for x in range(0, w, x_offset):
+            cv2.putText(img, text, (x, y),
+                        fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5,
+                        color=color, thickness=1)
+
+    return img
+
+
+def mark_image_colors(img, colors):
+
+    chars = list(string.ascii_uppercase[0:len(colors)])
+    analized_img = 0
 
     for c in colors:
         hsv_color_upper = (c[1][0] + 10, c[1][1] + 40, c[1][2] + 40)
         hsv_color_lower = (c[1][0] - 10, c[1][1] - 40, c[1][2] - 40)
         mask = cv2.inRange(img, hsv_color_lower, hsv_color_upper)
-        croped = cv2.bitwise_and(img, img, mask=mask)
-        cv2.putText(croped, f"{c} color of {len(colors)}", (10, 10),
-                    fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.4,
-                    color=(255, 255, 255), thickness=1)
-        cv2.imshow("croped", croped)
-        cv2.waitKey()
+        mask_filled = fill_image_with_text(mask, chars.pop())
+        croped = cv2.bitwise_and(img, img, mask=mask_filled)
+        #cv2.putText(croped, f"{c} color of {len(colors)}", (10, 10),
+        #            fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.4,
+        #            color=(255, 255, 255), thickness=1)
+        analized_img = analized_img | croped
+
+    return analized_img
 
 
 def main():
@@ -118,14 +140,14 @@ def main():
     cv2.waitKey(0)
 
     image_colors = extract_image_colors_rgb(opened_img)
-    unified_img = unify_similar_colors(opened_img, image_colors, 40)
+    unified_img = unify_similar_colors(opened_img, image_colors, 4)
     cv2.imshow("unified_image", unified_img)
     cv2.waitKey(0)
 
     show_colors_list(unified_img)
 
     image_colors = extract_image_colors(unified_img)
-    analize_image_zones(unified_img, image_colors)
+    analyzed_image = mark_image_colors(unified_img, image_colors)
 
     #cv2.namedWindow('unified_image')
     #cv2.setMouseCallback('unified_image', pick_color)
@@ -133,6 +155,8 @@ def main():
     # now click into the hsv img , and look at values:
     #image_colors = cv2.cvtColor(unified_img, cv2.COLOR_BGR2RGB)
     #cv2.imshow("unified_image", image_colors)
+
+    cv2.imshow("Analyzed Image", analyzed_image)
 
     cv2.waitKey(0)
     cv2.destroyAllWindows()
