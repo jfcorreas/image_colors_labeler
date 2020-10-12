@@ -115,31 +115,38 @@ def fill_image_with_text(img, text: str, color=(0, 0, 0)):
     return img
 
 
-def mark_image_colors(img, colors):
+def find_grid_contours(grid):
 
-    chars = list(string.ascii_uppercase[0:len(colors)])
-    analized_img = 0
+    gray = cv2.cvtColor(grid, cv2.COLOR_BGR2GRAY)
+    retval, threshed = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY)
 
-    for c in colors:
-        #hsv_color_upper = (c[1][0] + 10, c[1][1] + 40, c[1][2] + 40)
-        #hsv_color_lower = (c[1][0] - 10, c[1][1] - 40, c[1][2] - 40)
-        hsv_color_upper = (int(c[0]) + 10, int(c[1]) + 40, int(c[2]) + 40)
-        hsv_color_lower = (int(c[0]) - 10, int(c[1]) - 40, int(c[2]) - 40)
-        mask = cv2.inRange(img, hsv_color_lower, hsv_color_upper)
-        mask_filled = fill_image_with_text(mask, chars.pop())
-        croped = cv2.bitwise_and(img, img, mask=mask_filled)
-        #cv2.putText(croped, f"{c} color of {len(colors)}", (10, 10),
-        #            fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.4,
-        #            color=(255, 255, 255), thickness=1)
-        analized_img = analized_img | croped
+    contours, h = cv2.findContours(threshed, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
-    return analized_img
+    #dst1 = 255 * np.ones(shape=[grid.shape[0], grid.shape[1], 3], dtype=np.uint8)
+    #cv2.drawContours(dst1, contours, -1, (0, 255, 0), 1)
+    #cv2.imshow("Grid contours", dst1)
+
+    return contours
+
+
+def mark_image_colors(grid, img, color_symbols):
+
+    contours = find_grid_contours(grid)
+    for cnt in contours:
+        rect = cv2.boundingRect(cnt)
+        x, y, w, h = rect
+        pixel = img[y + int(h / 2), x + int(w / 2)]
+        col = (int(pixel[0]), int(pixel[1]), int(pixel[2]))
+        cv2.putText(grid, color_symbols[tuple(col)], (x + int(w / 2), y + int(h / 2)),
+                    fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.3,
+                    color=tuple(col), thickness=2)
+    return grid
 
 
 def find_grid(img):
 
     filter = False
-    gridded_image = img.copy()
+    grid_pattern = 255 * np.ones(shape=[img.shape[0], img.shape[1], 3], dtype=np.uint8)
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     edges = cv2.Canny(gray, 90, 150, apertureSize=3)
@@ -215,10 +222,9 @@ def find_grid(img):
         x2 = int(x0 - 1000 * (-b))
         y2 = int(y0 - 1000 * (a))
 
-        cv2.line(gridded_image, (x1, y1), (x2, y2), (0, 0, 255), 1)
+        cv2.line(grid_pattern, (x1, y1), (x2, y2), (0, 0, 0), 1)
 
-    cv2.imshow('hough.jpg', gridded_image)
-    get_squares(gridded_image)
+    return grid_pattern
 
 
 def get_squares(img):
@@ -251,31 +257,50 @@ def get_squares(img):
     cv2.imshow("image", img)
 
 
+def replace_black_color(img):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    ret, mask = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV)
+    img[mask == 255] = [5, 5, 5]
+    return img
+
+
+def generate_color_symbol_dict(image_colors):
+    chars = list(string.ascii_uppercase[0:len(image_colors)])
+    color_symbol_dict = {}
+    for color in image_colors:
+        c = (color[0], color[1], color[2])
+        color_symbol_dict[tuple(c)] = chars.pop()
+    return color_symbol_dict
+
+
 def main():
 
     global image_colors
 
     img_path = "mario.png"
-    img_cv = cv2.imread(img_path, cv2.IMREAD_COLOR)
+    img = cv2.imread(img_path, cv2.IMREAD_COLOR)
 
-    find_grid(img_cv)
+    img_without_black = replace_black_color(img)
+
+    image_colors = extract_image_colors(img_without_black)
+    opened_img = opening_colors(img_without_black, image_colors, 3)
+    cv2.imshow("opened_image", opened_img)
+
+    image_colors = extract_image_colors_rgb(opened_img)
+    unified_img = unify_similar_colors(opened_img, image_colors, 4)
+    cv2.imshow("unified_image", unified_img)
+    cv2.waitKey(0)
+
+    grid_pattern = find_grid(unified_img)
+
+    image_colors = extract_image_colors(unified_img)
+    color_symbols = generate_color_symbol_dict(image_colors)
+    print(color_symbols)
+    analyzed_grid = mark_image_colors(grid_pattern, unified_img, color_symbols)
 
     #show_colors_list(img_cv)
-
-    #image_colors = extract_image_colors(img_cv)
-    #opened_img = opening_colors(img_cv, image_colors, 3)
-    #cv2.imshow("opened_image", opened_img)
-    #cv2.waitKey(0)
-
-    #image_colors = extract_image_colors_rgb(opened_img)
-    #unified_img = unify_similar_colors(opened_img, image_colors, 4)
-    #cv2.imshow("unified_image", unified_img)
-    #cv2.waitKey(0)
-
     #show_colors_list(unified_img)
 
-    #image_colors = extract_image_colors(unified_img)
-    #analyzed_image = mark_image_colors(unified_img, image_colors)
 
     #cv2.namedWindow('unified_image')
     #cv2.setMouseCallback('unified_image', pick_color)
@@ -284,9 +309,9 @@ def main():
     #image_colors = cv2.cvtColor(unified_img, cv2.COLOR_BGR2RGB)
     #cv2.imshow("unified_image", image_colors)
 
-    #cv2.imshow("Analyzed Image", analyzed_image)
+    cv2.imshow("Analyzed Grid Pattern", analyzed_grid)
 
-    #cv2.waitKey(0)
+    cv2.waitKey(0)
     cv2.destroyAllWindows()
 
 

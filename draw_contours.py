@@ -2,10 +2,18 @@ import cv2
 import numpy as np
 
 img = cv2.imread("mario.png")
+
 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 cv2.imshow("gray", gray)
 cv2.waitKey()
-retval, threshed = cv2.threshold(gray, 1, 255, cv2.THRESH_BINARY)
+
+ret, mask = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV)
+img[mask == 255] = [5, 5, 5]
+cv2.imshow("Without Black", img)
+cv2.waitKey()
+
+gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+retval, threshed = cv2.threshold(gray, 5, 255, cv2.THRESH_BINARY)
 
 
 contours, h = cv2.findContours(threshed, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
