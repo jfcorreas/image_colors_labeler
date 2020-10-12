@@ -15,13 +15,17 @@ image_colors = None  # global
 
 
 def extract_image_colors(img):
-    colors = Image.fromarray(img).getcolors()
+    #colors = Image.fromarray(img).getcolors()
+    all_rgb_codes = img.reshape(-1, img.shape[-1]).copy()
+    colors = np.unique(all_rgb_codes, axis=0, return_counts=False)
     return colors
 
 
 def extract_image_colors_rgb(img):
     rgb_image = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    colors = Image.fromarray(rgb_image).getcolors()
+    #colors = Image.fromarray(rgb_image).getcolors()
+    all_rgb_codes = rgb_image.reshape(-1, rgb_image.shape[-1]).copy()
+    colors = np.unique(all_rgb_codes, axis=0, return_counts=False)
     return colors
 
 
@@ -32,7 +36,8 @@ def unify_similar_colors(img, colors, delta_threshold: int):
     lab = rgb2lab(rgb_image)
 
     for color in colors:
-        color_3d = np.uint8(np.asarray([[color[1]]]))
+        #color_3d = np.uint8(np.asarray([[color[1]]]))
+        color_3d = np.uint8(np.asarray([[color]]))
         dE_color = deltaE_cie76(rgb2lab(color_3d), lab)
         rgb_image_array[dE_color < delta_threshold] = color_3d
 
@@ -47,7 +52,8 @@ def opening_colors(img, colors, radius: int):
     combined_mask = 0
 
     for c in colors:
-        mask = cv2.inRange(img, c[1], c[1])
+        #mask = cv2.inRange(img, c[1], c[1])
+        mask = cv2.inRange(img, c, c)
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (radius, radius))
         opened_mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
         combined_mask = combined_mask | opened_mask
@@ -63,7 +69,8 @@ def show_colors_list(img):
     x = 0
     y = 500
     for c in extract_image_colors_rgb(img):
-        rgb_color = (c[1][0], c[1][1], c[1][2])
+        #rgb_color = (c[1][0], c[1][1], c[1][2])
+        rgb_color = (int(c[0]), int(c[1]), int(c[2]))
         cv2.rectangle(whiteblankimage, pt1=(x, y), pt2=(x+100, y-100), color=rgb_color, thickness=-1)
         cv2.putText(whiteblankimage, f"{rgb_color}", (x+5, y-40),
                     fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.4,
@@ -114,8 +121,10 @@ def mark_image_colors(img, colors):
     analized_img = 0
 
     for c in colors:
-        hsv_color_upper = (c[1][0] + 10, c[1][1] + 40, c[1][2] + 40)
-        hsv_color_lower = (c[1][0] - 10, c[1][1] - 40, c[1][2] - 40)
+        #hsv_color_upper = (c[1][0] + 10, c[1][1] + 40, c[1][2] + 40)
+        #hsv_color_lower = (c[1][0] - 10, c[1][1] - 40, c[1][2] - 40)
+        hsv_color_upper = (int(c[0]) + 10, int(c[1]) + 40, int(c[2]) + 40)
+        hsv_color_lower = (int(c[0]) - 10, int(c[1]) - 40, int(c[2]) - 40)
         mask = cv2.inRange(img, hsv_color_lower, hsv_color_upper)
         mask_filled = fill_image_with_text(mask, chars.pop())
         croped = cv2.bitwise_and(img, img, mask=mask_filled)
@@ -130,6 +139,7 @@ def mark_image_colors(img, colors):
 def find_grid(img):
 
     filter = False
+    gridded_image = img.copy()
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     edges = cv2.Canny(gray, 90, 150, apertureSize=3)
@@ -205,34 +215,67 @@ def find_grid(img):
         x2 = int(x0 - 1000 * (-b))
         y2 = int(y0 - 1000 * (a))
 
-        cv2.line(img, (x1, y1), (x2, y2), (0, 0, 255), 2)
+        cv2.line(gridded_image, (x1, y1), (x2, y2), (0, 0, 255), 1)
 
-    cv2.imshow('hough.jpg', img)
+    cv2.imshow('hough.jpg', gridded_image)
+    get_squares(gridded_image)
+
+
+def get_squares(img):
+    gray_image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    cv2.imshow('grayImage', gray_image)
+    (imgThresh, blackAndWhiteImage) = cv2.threshold(gray_image, 127, 255, cv2.THRESH_BINARY)
+    cv2.imshow('b&wImage', blackAndWhiteImage)
+    cv2.waitKey(0)
+
+    contours, hierarchy = cv2.findContours(blackAndWhiteImage.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    print("Contours found: %d", len(contours))
+
+    arrrect = []
+    #img_area = cv2.contourArea(contours)
+
+    for cnt in contours:
+        epsilon = 0.01 * cv2.arcLength(cnt, True)
+        approx = cv2.approxPolyDP(cnt, epsilon, False)
+        area = cv2.contourArea(approx)
+        rect = cv2.minAreaRect(approx)
+        box = cv2.boxPoints(rect)
+        box = np.int0(box)
+       # percentage = (area * 100) / img_area
+        #if percentage > 0.3:
+        arrrect.append(box)
+
+    #img = cv2.?????????(img, arrrect, "Green", 10)
+    cv2.drawContours(img, img, -1, (0, 255, 0), thickness=1)
+    cv2.namedWindow('image', cv2.WINDOW_NORMAL)
+    cv2.imshow("image", img)
 
 
 def main():
 
     global image_colors
-    img_cv = cv2.imread("mario2.jpg", cv2.IMREAD_COLOR)
+
+    img_path = "mario.png"
+    img_cv = cv2.imread(img_path, cv2.IMREAD_COLOR)
+
     find_grid(img_cv)
-    cv2.waitKey(0)
 
-    show_colors_list(img_cv)
+    #show_colors_list(img_cv)
 
-    image_colors = extract_image_colors(img_cv)
-    opened_img = opening_colors(img_cv, image_colors, 3)
-    cv2.imshow("opened_image", opened_img)
-    cv2.waitKey(0)
+    #image_colors = extract_image_colors(img_cv)
+    #opened_img = opening_colors(img_cv, image_colors, 3)
+    #cv2.imshow("opened_image", opened_img)
+    #cv2.waitKey(0)
 
-    image_colors = extract_image_colors_rgb(opened_img)
-    unified_img = unify_similar_colors(opened_img, image_colors, 4)
-    cv2.imshow("unified_image", unified_img)
-    cv2.waitKey(0)
+    #image_colors = extract_image_colors_rgb(opened_img)
+    #unified_img = unify_similar_colors(opened_img, image_colors, 4)
+    #cv2.imshow("unified_image", unified_img)
+    #cv2.waitKey(0)
 
-    show_colors_list(unified_img)
+    #show_colors_list(unified_img)
 
-    image_colors = extract_image_colors(unified_img)
-    analyzed_image = mark_image_colors(unified_img, image_colors)
+    #image_colors = extract_image_colors(unified_img)
+    #analyzed_image = mark_image_colors(unified_img, image_colors)
 
     #cv2.namedWindow('unified_image')
     #cv2.setMouseCallback('unified_image', pick_color)
@@ -241,9 +284,9 @@ def main():
     #image_colors = cv2.cvtColor(unified_img, cv2.COLOR_BGR2RGB)
     #cv2.imshow("unified_image", image_colors)
 
-    cv2.imshow("Analyzed Image", analyzed_image)
+    #cv2.imshow("Analyzed Image", analyzed_image)
 
-    cv2.waitKey(0)
+    #cv2.waitKey(0)
     cv2.destroyAllWindows()
 
 
