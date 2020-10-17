@@ -17,7 +17,7 @@ def main():
         dst = src * (mask[:, :, None].astype(src.dtype))
         cv.imshow(window_name, dst)
 
-    img_path = "mario.png"
+    img_path = "yoshi.png"
     src = cv.imread(img_path, cv.IMREAD_COLOR)
     src_gray = cv.cvtColor(src, cv.COLOR_BGR2GRAY)
     cv.namedWindow(window_name)

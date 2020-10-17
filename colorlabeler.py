@@ -1,3 +1,5 @@
+import math
+
 from PIL import Image, ImageDraw
 import cv2
 import numpy as np
@@ -87,28 +89,34 @@ def pick_color(event, x, y, flags, param):
         cv2.imshow("mask", image_mask)
 
 
-def find_grid(img):
+def find_grid(img, low_threshold=0, ratio=33, kernel_size=3):
 
     filter = False
-    grid_pattern = 255 * np.ones(shape=[img.shape[0], img.shape[1], 3], dtype=np.uint8)
 
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    edges = cv2.Canny(gray, 90, 150, apertureSize=3)
+    img_blur = cv2.blur(img, (3, 3))
+    kernel = np.ones((3, 3), np.uint8)
+    img_blur = cv2.dilate(img_blur, kernel, iterations=1)
+    edges = cv2.Canny(img_blur, low_threshold, low_threshold * ratio, kernel_size)
+
+    #gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    #edges = cv2.Canny(gray, 90, 150, apertureSize=3)
+    cv2.imshow('canny1.jpg', edges)
     kernel = np.ones((3, 3), np.uint8)
     edges = cv2.dilate(edges, kernel, iterations=1)
+    cv2.imshow('canny2.jpg', edges)
     kernel = np.ones((5, 5), np.uint8)
     edges = cv2.erode(edges, kernel, iterations=1)
-    cv2.imshow('canny.jpg', edges)
+    cv2.imshow('canny3.jpg', edges)
 
-    lines = cv2.HoughLines(edges, 1, np.pi / 180, 150)
+    lines = cv2.HoughLines(edges, 1, np.pi / 180, 100)
 
     if not lines.any():
         print('No lines were found')
         exit()
 
     if filter:
-        rho_threshold = 15
-        theta_threshold = 0.1
+        rho_threshold = 75
+        theta_threshold = 0.5
 
         # how many lines are similar to a given one
         similar_lines = {i: [] for i in range(len(lines))}
@@ -150,23 +158,23 @@ def find_grid(img):
         for i in range(len(lines)):  # filtering
             if line_flags[i]:
                 filtered_lines.append(lines[i])
-
-        print('Number of filtered lines:', len(filtered_lines))
     else:
         filtered_lines = lines
 
-    for line in filtered_lines:
-        rho, theta = line[0]
-        a = np.cos(theta)
-        b = np.sin(theta)
-        x0 = a * rho
-        y0 = b * rho
-        x1 = int(x0 + 1000 * (-b))
-        y1 = int(y0 + 1000 * (a))
-        x2 = int(x0 - 1000 * (-b))
-        y2 = int(y0 - 1000 * (a))
+    grid_pattern = 255 * np.ones(shape=[img.shape[0], img.shape[1], 3], dtype=np.uint8)
 
-        cv2.line(grid_pattern, (x1, y1), (x2, y2), (0, 0, 0), 1)
+    print('Number of filtered lines:', len(filtered_lines))
+    if filtered_lines is not None:
+        for i in range(0, len(filtered_lines)):
+            rho = lines[i][0][0]
+            theta = lines[i][0][1]
+            a = np.cos(theta)
+            b = np.sin(theta)
+            x0 = a * rho
+            y0 = b * rho
+            pt1 = (int(x0 + 1000*(-b)), int(y0 + 1000*(a)))
+            pt2 = (int(x0 - 1000*(-b)), int(y0 - 1000*(a)))
+            cv2.line(grid_pattern, pt1, pt2, (0, 0, 0), 3, 2)
 
     return grid_pattern
 
@@ -193,7 +201,7 @@ def mark_image_colors(grid, img, color_symbols):
         x, y, w, h = rect
         pixel = img[y + int(h / 2), x + int(w / 2)]
         col = (int(pixel[0]), int(pixel[1]), int(pixel[2]))
-        cv2.putText(grid, color_symbols[tuple(col)], (x + 10, y + 15),
+        cv2.putText(grid, color_symbols[tuple(col)], (x + 5, y + 15),
                     fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5,
                     color=tuple(col), thickness=1)
     return grid
@@ -212,12 +220,12 @@ def main():
 
     global image_colors
 
-    img_path = "mario.png"
+    img_path = "yoshi.png"
     img = cv2.imread(img_path, cv2.IMREAD_COLOR)
 
     img_without_black = replace_black_color(img)
     cv2.imshow("image without black", img_without_black)
-    cv2.waitKey(0)
+    #cv2.waitKey(0)
 
     image_colors = extract_image_colors(img_without_black)
     opened_img = opening_colors(img_without_black, 3)
@@ -231,13 +239,13 @@ def main():
     grid_pattern = find_grid(unified_img)
     cv2.imshow("Grid Pattern", grid_pattern)
 
-    #image_colors = extract_image_colors(unified_img)
-    #color_symbols = generate_color_symbol_dict(image_colors)
-    #analyzed_grid = mark_image_colors(grid_pattern, unified_img, color_symbols)
-    #cv2.imshow("Analyzed Grid Pattern", analyzed_grid)
+    image_colors = extract_image_colors(unified_img)
+    color_symbols = generate_color_symbol_dict(image_colors)
+    analyzed_grid = mark_image_colors(grid_pattern, unified_img, color_symbols)
+    cv2.imshow("Analyzed Grid Pattern", analyzed_grid)
 
     #show_colors_list(img_cv)
-    #show_colors_list(unified_img)
+    show_colors_list(unified_img)
 
 
     #cv2.namedWindow('unified_image')
