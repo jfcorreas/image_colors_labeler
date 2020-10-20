@@ -91,6 +91,22 @@ def pick_color(event, x, y, flags, param):
         cv2.imshow("mask", image_mask)
 
 
+def filter_lines2(lines):
+    for x1, y1, x2, y2 in lines:
+        for index, (x3, y3, x4, y4) in enumerate(lines):
+
+            if y1 == y2 and y3 == y4:  # Horizontal Lines
+                diff = abs(y1 - y3)
+            elif x1 == x2 and x3 == x4:  # Vertical Lines
+                diff = abs(x1 - x3)
+            else:
+                diff = 0
+
+            if diff < 10 and diff != 0:
+                del lines[index]
+    return lines
+
+
 def filter_lines(lines, rho_threshold=40, theta_threshold=0.5):
     # how many lines are similar to a given one
     similar_lines = {i: [] for i in range(len(lines))}
@@ -137,48 +153,42 @@ def filter_lines(lines, rho_threshold=40, theta_threshold=0.5):
 def find_grid(img, low_threshold=0, ratio=33, kernel_size=3):
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
     edges = canny_image(gray)
-    #edges = cv2.Canny(gray, 90, 270, apertureSize=3)
-
     edges = dilate_and_erode(edges)
-    #kernel = np.ones((3, 3), np.uint8)
-    #edges = cv2.dilate(edges, kernel, iterations=2)
-    #cv2.imshow('canny2.jpg', edges)
-    #kernel = np.ones((4, 4), np.uint8)
-    #edges = cv2.erode(edges, kernel, iterations=2)
-    #cv2.imshow('canny3.jpg', edges)
-    #cv2.waitKey()
-    lines = cv2.HoughLines(edges, 1, np.pi / 180, 150)
 
-    if not lines.any():
+    lines = cv2.HoughLinesP(edges, 1, np.pi / 180, 50, minLineLength=10, maxLineGap=10)
+    # lines = cv2.HoughLines(edges, 1, np.pi / 180, 150).tolist()
+
+    if len(lines) == 0:
         print('No lines were found')
         exit()
 
     print('number of Hough lines:', len(lines))
 
-    #filtered_lines = lines
-    filtered_lines = filter_lines(lines)
+    filtered_lines = lines
+    #filtered_lines = filter_lines2(lines)
 
     grid_pattern = 255 * np.ones(shape=[img.shape[0], img.shape[1], 3], dtype=np.uint8)
 
     print('Number of filtered lines:', len(filtered_lines))
     # Draw the lines
-    #if filtered_lines is not None:
-    #    for i in range(0, len(filtered_lines)):
-    #        l = filtered_lines[i][0]
-    #        cv2.line(grid_pattern, (l[0]+1000, l[1]), (l[2]-1000, l[3]), (0, 0, 0), 3, 2)
-
     if filtered_lines is not None:
         for i in range(0, len(filtered_lines)):
-            rho = lines[i][0][0]
-            theta = lines[i][0][1]
-            a = np.cos(theta)
-            b = np.sin(theta)
-            x0 = a * rho
-            y0 = b * rho
-            pt1 = (int(x0 + 1000 * (-b)), int(y0 + 1000 * (a)))
-            pt2 = (int(x0 - 1000 * (-b)), int(y0 - 1000 * (a)))
-            cv2.line(grid_pattern, pt1, pt2, (0, 0, 0), 3, 2)
+            l = filtered_lines[i][0]
+            cv2.line(grid_pattern, (l[0], l[1]), (l[2], l[3]), (0, 0, 0), 3, 2)
+
+    #if filtered_lines is not None:
+    #    for i in range(0, len(filtered_lines)):
+    #        rho = lines[i][0][0]
+    #        theta = lines[i][0][1]
+    #        a = np.cos(theta)
+    #        b = np.sin(theta)
+    #        x0 = a * rho
+    #        y0 = b * rho
+    #        pt1 = (int(x0 + 1000 * (-b)), int(y0 + 1000 * (a)))
+    #        pt2 = (int(x0 - 1000 * (-b)), int(y0 - 1000 * (a)))
+    #        cv2.line(grid_pattern, pt1, pt2, (0, 0, 0), 3, 2)
 
     return grid_pattern
 
@@ -188,10 +198,6 @@ def find_grid_contours(grid):
     retval, threshed = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY)
 
     contours, h = cv2.findContours(threshed, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-
-    # dst1 = 255 * np.ones(shape=[grid.shape[0], grid.shape[1], 3], dtype=np.uint8)
-    # cv2.drawContours(dst1, contours, -1, (0, 255, 0), 1)
-    # cv2.imshow("Grid contours", dst1)
 
     return contours
 
@@ -221,7 +227,7 @@ def generate_color_symbol_dict(image_colors):
 def main():
     global image_colors
 
-    img_path = "mario.png"
+    img_path = "yoshi.png"
     img = cv2.imread(img_path, cv2.IMREAD_COLOR)
 
     img_without_black = replace_black_color(img)
