@@ -1,57 +1,51 @@
-from __future__ import print_function
 import cv2 as cv
-import numpy as np
-import argparse
 
 erosion_size = 0
 max_elem = 2
 max_kernel_size = 21
 title_trackbar_element_type = 'Element:\n 0: Rect \n 1: Cross \n 2: Ellipse'
-title_trackbar_kernel_size = 'Kernel size:\n 2n +1'
-title_erosion_window = 'Erosion Demo'
-title_dilatation_window = 'Dilation Demo'
+title_trackbar_erode_kernel_size = 'Erode Kernel size:\n 2n +1'
+title_trackbar_dilate_kernel_size = 'Dilate Kernel size:\n 2n +1'
+title_dilate_erode_window = 'Dilatation-Erosion Demo'
+result_img = None
+src_img = None
 
 
-def erosion(val):
-    erosion_size = cv.getTrackbarPos(title_trackbar_kernel_size, title_erosion_window)
-    erosion_type = 0
-    val_type = cv.getTrackbarPos(title_trackbar_element_type, title_erosion_window)
+def dilatation_erosion(val):
+    global result_img
+    global src_img
+
+    dilatation_size = cv.getTrackbarPos(title_trackbar_dilate_kernel_size, title_dilate_erode_window)
+    erosion_size = cv.getTrackbarPos(title_trackbar_erode_kernel_size, title_dilate_erode_window)
+    morph_type = 0
+    val_type = cv.getTrackbarPos(title_trackbar_element_type, title_dilate_erode_window)
     if val_type == 0:
-        erosion_type = cv.MORPH_RECT
+        morph_type = cv.MORPH_RECT
     elif val_type == 1:
-        erosion_type = cv.MORPH_CROSS
+        morph_type = cv.MORPH_CROSS
     elif val_type == 2:
-        erosion_type = cv.MORPH_ELLIPSE
-    element = cv.getStructuringElement(erosion_type, (2 * erosion_size + 1, 2 * erosion_size + 1),
-                                       (erosion_size, erosion_size))
-    erosion_dst = cv.erode(src, element)
-    cv.imshow(title_erosion_window, erosion_dst)
-
-
-def dilatation(val):
-    dilatation_size = cv.getTrackbarPos(title_trackbar_kernel_size, title_dilatation_window)
-    dilatation_type = 0
-    val_type = cv.getTrackbarPos(title_trackbar_element_type, title_dilatation_window)
-    if val_type == 0:
-        dilatation_type = cv.MORPH_RECT
-    elif val_type == 1:
-        dilatation_type = cv.MORPH_CROSS
-    elif val_type == 2:
-        dilatation_type = cv.MORPH_ELLIPSE
-    element = cv.getStructuringElement(dilatation_type, (2 * dilatation_size + 1, 2 * dilatation_size + 1),
+        morph_type = cv.MORPH_ELLIPSE
+    element = cv.getStructuringElement(morph_type, (2 * dilatation_size + 1, 2 * dilatation_size + 1),
                                        (dilatation_size, dilatation_size))
-    dilatation_dst = cv.dilate(src, element)
-    cv.imshow(title_dilatation_window, dilatation_dst)
+    dilatation_dst = cv.dilate(src_img, element)
+    element = cv.getStructuringElement(morph_type, (2 * erosion_size + 1, 2 * erosion_size + 1),
+                                       (erosion_size, erosion_size))
+    result_img = cv.erode(dilatation_dst, element)
+    cv.imshow(title_dilate_erode_window, result_img)
 
 
-img_path = "yoshi.png"
-src = cv.imread(img_path, cv.IMREAD_COLOR)
-cv.namedWindow(title_erosion_window)
-cv.createTrackbar(title_trackbar_element_type, title_erosion_window, 0, max_elem, erosion)
-cv.createTrackbar(title_trackbar_kernel_size, title_erosion_window, 0, max_kernel_size, erosion)
-cv.namedWindow(title_dilatation_window)
-cv.createTrackbar(title_trackbar_element_type, title_dilatation_window, 0, max_elem, dilatation)
-cv.createTrackbar(title_trackbar_kernel_size, title_dilatation_window, 0, max_kernel_size, dilatation)
-erosion(0)
-dilatation(0)
-cv.waitKey()
+def dilate_and_erode(src):
+    global result_img
+    global src_img
+
+    result_img = src.copy()
+    src_img = src.copy()
+
+    cv.namedWindow(title_dilate_erode_window)
+    cv.createTrackbar(title_trackbar_element_type, title_dilate_erode_window, 0, max_elem, dilatation_erosion)
+    cv.createTrackbar(title_trackbar_dilate_kernel_size, title_dilate_erode_window, 0, max_kernel_size, dilatation_erosion)
+    cv.createTrackbar(title_trackbar_erode_kernel_size, title_dilate_erode_window, 0, max_kernel_size, dilatation_erosion)
+    cv.namedWindow(title_dilate_erode_window)
+    dilatation_erosion(0)
+    cv.waitKey()
+    return result_img

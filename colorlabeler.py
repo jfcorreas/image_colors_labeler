@@ -8,6 +8,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 from canny_detector import canny_image
+from dilation_erosion import dilate_and_erode
 
 image_colors = None
 
@@ -138,13 +139,15 @@ def find_grid(img, low_threshold=0, ratio=33, kernel_size=3):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     edges = canny_image(gray)
     #edges = cv2.Canny(gray, 90, 270, apertureSize=3)
-    kernel = np.ones((3, 3), np.uint8)
-    edges = cv2.dilate(edges, kernel, iterations=2)
-    cv2.imshow('canny2.jpg', edges)
-    kernel = np.ones((4, 4), np.uint8)
-    edges = cv2.erode(edges, kernel, iterations=2)
-    cv2.imshow('canny3.jpg', edges)
-    cv2.waitKey()
+
+    edges = dilate_and_erode(edges)
+    #kernel = np.ones((3, 3), np.uint8)
+    #edges = cv2.dilate(edges, kernel, iterations=2)
+    #cv2.imshow('canny2.jpg', edges)
+    #kernel = np.ones((4, 4), np.uint8)
+    #edges = cv2.erode(edges, kernel, iterations=2)
+    #cv2.imshow('canny3.jpg', edges)
+    #cv2.waitKey()
     lines = cv2.HoughLines(edges, 1, np.pi / 180, 150)
 
     if not lines.any():
