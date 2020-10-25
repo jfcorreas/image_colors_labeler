@@ -1,6 +1,6 @@
 extcolors
 Pillow
-opencv-python
-numpy
+opencv-python==4.4.0
+numpy==1.19.2+mkl
 matplotlib
 scikit-image
