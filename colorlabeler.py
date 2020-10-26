@@ -1,6 +1,4 @@
-import math
-
-from PIL import Image, ImageDraw
+from PIL import Image
 import cv2
 import numpy as np
 from skimage.color import rgb2lab, deltaE_cie76
@@ -91,63 +89,16 @@ def pick_color(event, x, y, flags, param):
         cv2.imshow("mask", image_mask)
 
 
-def filter_lines2(lines):
-    for x1, y1, x2, y2 in lines:
-        for index, (x3, y3, x4, y4) in enumerate(lines):
+def is_vertical_line(x0, y0, x1, y1):
+    t5 = np.tan(5 * np.pi / 180)
 
-            if y1 == y2 and y3 == y4:  # Horizontal Lines
-                diff = abs(y1 - y3)
-            elif x1 == x2 and x3 == x4:  # Vertical Lines
-                diff = abs(x1 - x3)
-            else:
-                diff = 0
+    dx = x1-x0
+    dy = y1-y0
 
-            if diff < 10 and diff != 0:
-                del lines[index]
-    return lines
-
-
-def filter_lines(lines, rho_threshold=40, theta_threshold=0.5):
-    # how many lines are similar to a given one
-    similar_lines = {i: [] for i in range(len(lines))}
-    for i in range(len(lines)):
-        for j in range(len(lines)):
-            if i == j:
-                continue
-
-            rho_i, theta_i = lines[i][0]
-            rho_j, theta_j = lines[j][0]
-            if abs(rho_i - rho_j) < rho_threshold and abs(theta_i - theta_j) < theta_threshold:
-                similar_lines[i].append(j)
-
-    # ordering the INDECES of the lines by how many are similar to them
-    indices = [i for i in range(len(lines))]
-    indices.sort(key=lambda x: len(similar_lines[x]))
-
-    # line flags is the base for the filtering
-    line_flags = len(lines) * [True]
-    for i in range(len(lines) - 1):
-        if not line_flags[indices[i]]:  # if we already disregarded the ith element in the ordered list then we don't
-            # care (we will not delete anything based on it and we will never reconsider using this line again)
-            continue
-
-        for j in range(i + 1, len(lines)):  # we are only considering those elements that had less similar line
-            if not line_flags[indices[j]]:  # and only if we have not disregarded them already
-                continue
-
-            rho_i, theta_i = lines[indices[i]][0]
-            rho_j, theta_j = lines[indices[j]][0]
-            if abs(rho_i - rho_j) < rho_threshold and abs(theta_i - theta_j) < theta_threshold:
-                line_flags[
-                    indices[j]] = False  # if it is similar and have not been disregarded yet then drop it now
-
-    filtered_lines = []
-
-    if filter:
-        for i in range(len(lines)):  # filtering
-            if line_flags[i]:
-                filtered_lines.append(lines[i])
-    return filtered_lines
+    if dy != 0 and abs(dx / dy) < t5:
+        return True
+    else:
+        return False
 
 
 def find_grid(img, low_threshold=0, ratio=33, kernel_size=3):
@@ -157,8 +108,7 @@ def find_grid(img, low_threshold=0, ratio=33, kernel_size=3):
     edges = canny_image(gray)
     edges = dilate_and_erode(edges)
 
-    lines = cv2.HoughLinesP(edges, 1, np.pi / 180, 50, minLineLength=10, maxLineGap=10)
-    # lines = cv2.HoughLines(edges, 1, np.pi / 180, 150).tolist()
+    lines = cv2.HoughLinesP(edges, 1, np.pi / 180, 50, minLineLength=10, maxLineGap=20)
 
     if len(lines) == 0:
         print('No lines were found')
@@ -167,28 +117,18 @@ def find_grid(img, low_threshold=0, ratio=33, kernel_size=3):
     print('number of Hough lines:', len(lines))
 
     filtered_lines = lines
-    #filtered_lines = filter_lines2(lines)
-
-    grid_pattern = 255 * np.ones(shape=[img.shape[0], img.shape[1], 3], dtype=np.uint8)
+    height, width, channels = img.shape
+    grid_pattern = 255 * np.ones(shape=[height, width, 3], dtype=np.uint8)
 
     print('Number of filtered lines:', len(filtered_lines))
     # Draw the lines
     if filtered_lines is not None:
         for i in range(0, len(filtered_lines)):
             l = filtered_lines[i][0]
-            cv2.line(grid_pattern, (l[0], l[1]), (l[2], l[3]), (0, 0, 0), 3, 2)
-
-    #if filtered_lines is not None:
-    #    for i in range(0, len(filtered_lines)):
-    #        rho = lines[i][0][0]
-    #        theta = lines[i][0][1]
-    #        a = np.cos(theta)
-    #        b = np.sin(theta)
-    #        x0 = a * rho
-    #        y0 = b * rho
-    #        pt1 = (int(x0 + 1000 * (-b)), int(y0 + 1000 * (a)))
-    #        pt2 = (int(x0 - 1000 * (-b)), int(y0 - 1000 * (a)))
-    #        cv2.line(grid_pattern, pt1, pt2, (0, 0, 0), 3, 2)
+            if is_vertical_line(l[0], l[1], l[2], l[3]):
+                cv2.line(grid_pattern, (l[0], 0), (l[2], height-1), (0, 0, 0), 2)
+            else:
+                cv2.line(grid_pattern, (0, l[1]), (width-1, l[3]), (0, 0, 0), 2)
 
     return grid_pattern
 
@@ -227,7 +167,7 @@ def generate_color_symbol_dict(image_colors):
 def main():
     global image_colors
 
-    img_path = "mario.png"
+    img_path = "yoshi.png"
     img = cv2.imread(img_path, cv2.IMREAD_COLOR)
 
     img_without_black = replace_black_color(img)
