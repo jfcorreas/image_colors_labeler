@@ -45,7 +45,6 @@ def dilate_and_erode(src):
     cv.createTrackbar(title_trackbar_element_type, title_dilate_erode_window, 0, max_elem, dilatation_erosion)
     cv.createTrackbar(title_trackbar_dilate_kernel_size, title_dilate_erode_window, 0, max_kernel_size, dilatation_erosion)
     cv.createTrackbar(title_trackbar_erode_kernel_size, title_dilate_erode_window, 0, max_kernel_size, dilatation_erosion)
-    cv.namedWindow(title_dilate_erode_window)
     dilatation_erosion(0)
     cv.waitKey()
     return result_img

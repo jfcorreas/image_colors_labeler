@@ -6,6 +6,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 from canny_detector import canny_image
+from detect_lines import detect_lines
 from dilation_erosion import dilate_and_erode
 
 image_colors = None
@@ -89,46 +90,13 @@ def pick_color(event, x, y, flags, param):
         cv2.imshow("mask", image_mask)
 
 
-def is_vertical_line(x0, y0, x1, y1):
-    t5 = np.tan(5 * np.pi / 180)
-
-    dx = x1-x0
-    dy = y1-y0
-
-    if dy != 0 and abs(dx / dy) < t5:
-        return True
-    else:
-        return False
-
-
-def find_grid(img, low_threshold=0, ratio=33, kernel_size=3):
+def find_grid(img):
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     edges = canny_image(gray)
     edges = dilate_and_erode(edges)
-
-    lines = cv2.HoughLinesP(edges, 1, np.pi / 180, 50, minLineLength=10, maxLineGap=20)
-
-    if len(lines) == 0:
-        print('No lines were found')
-        exit()
-
-    print('number of Hough lines:', len(lines))
-
-    filtered_lines = lines
-    height, width, channels = img.shape
-    grid_pattern = 255 * np.ones(shape=[height, width, 3], dtype=np.uint8)
-
-    print('Number of filtered lines:', len(filtered_lines))
-    # Draw the lines
-    if filtered_lines is not None:
-        for i in range(0, len(filtered_lines)):
-            l = filtered_lines[i][0]
-            if is_vertical_line(l[0], l[1], l[2], l[3]):
-                cv2.line(grid_pattern, (l[0], 0), (l[2], height-1), (0, 0, 0), 2)
-            else:
-                cv2.line(grid_pattern, (0, l[1]), (width-1, l[3]), (0, 0, 0), 2)
+    grid_pattern = detect_lines(edges)
 
     return grid_pattern
 
