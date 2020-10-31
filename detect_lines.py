@@ -52,7 +52,6 @@ def detect_lines(src):
     global result_img
     global src_img
 
-    result_img = src.copy()
     src_img = src.copy()
     cv.namedWindow(window_name)
     cv.createTrackbar(title_trackbar_length, window_name, 0, max_line_length, hough_lines)

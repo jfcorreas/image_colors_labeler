@@ -7,12 +7,12 @@ title_trackbar_element_type = 'Element:\n 0: Rect \n 1: Cross \n 2: Ellipse'
 title_trackbar_erode_kernel_size = 'Erode Kernel size:\n 2n +1'
 title_trackbar_dilate_kernel_size = 'Dilate Kernel size:\n 2n +1'
 title_dilate_erode_window = 'Dilatation-Erosion Demo'
-result_img = None
+src_grid_img = None
 src_img = None
 
 
 def dilatation_erosion(val):
-    global result_img
+    global src_grid_img
     global src_img
 
     dilatation_size = cv.getTrackbarPos(title_trackbar_dilate_kernel_size, title_dilate_erode_window)
@@ -35,7 +35,7 @@ def dilatation_erosion(val):
 
 
 def dilate_and_erode(src):
-    global result_img
+    global src_grid_img
     global src_img
 
     result_img = src.copy()

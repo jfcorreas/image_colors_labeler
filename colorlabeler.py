@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from canny_detector import canny_image
 from detect_lines import detect_lines
 from dilation_erosion import dilate_and_erode
+from tag_colors import tag_image_colors
 
 image_colors = None
 
@@ -101,37 +102,6 @@ def find_grid(img):
     return grid_pattern
 
 
-def find_grid_contours(grid):
-    gray = cv2.cvtColor(grid, cv2.COLOR_BGR2GRAY)
-    retval, threshed = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY)
-
-    contours, h = cv2.findContours(threshed, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-
-    return contours
-
-
-def mark_image_colors(grid, img, color_symbols):
-    contours = find_grid_contours(grid)
-    for cnt in contours:
-        rect = cv2.boundingRect(cnt)
-        x, y, w, h = rect
-        pixel = img[y + int(h / 2), x + int(w / 2)]
-        col = (int(pixel[0]), int(pixel[1]), int(pixel[2]))
-        cv2.putText(grid, color_symbols[tuple(col)], (x + 5, y + 15),
-                    fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5,
-                    color=tuple(col), thickness=1)
-    return grid
-
-
-def generate_color_symbol_dict(image_colors):
-    symbols = list("AXOT#5PVB9$º=@2LN/+")
-    color_symbol_dict = {}
-    for color in image_colors:
-        c = (color[0], color[1], color[2])
-        color_symbol_dict[tuple(c)] = symbols.pop()
-    return color_symbol_dict
-
-
 def main():
     global image_colors
 
@@ -139,24 +109,16 @@ def main():
     img = cv2.imread(img_path, cv2.IMREAD_COLOR)
 
     img_without_black = replace_black_color(img)
-    cv2.imshow("image without black", img_without_black)
-    # cv2.waitKey(0)
-
     image_colors = extract_image_colors(img_without_black)
-    opened_img = opening_colors(img_without_black, 3)
-    # cv2.imshow("opened_image", opened_img)
 
-    image_colors = extract_image_colors(opened_img)
+    opened_img = opening_colors(img_without_black, 3)
+
     unified_img = unify_similar_colors(opened_img, 4)
-    # cv2.imshow("unified_image", unified_img)
-    # cv2.waitKey(0)
+    image_colors = extract_image_colors(unified_img)
 
     grid_pattern = find_grid(unified_img)
-    cv2.imshow("Grid Pattern", grid_pattern)
 
-    image_colors = extract_image_colors(unified_img)
-    color_symbols = generate_color_symbol_dict(image_colors)
-    analyzed_grid = mark_image_colors(grid_pattern, unified_img, color_symbols)
+    analyzed_grid = tag_image_colors(unified_img, grid_pattern, image_colors)
     cv2.imshow("Analyzed Grid Pattern", analyzed_grid)
 
 
