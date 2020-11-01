@@ -3,7 +3,8 @@ import cv2 as cv
 max_symbol_offset = 50
 max_font_size = 20
 window_name = 'Colors Map'
-title_symbol_offset = 'Symbol Position:'
+title_symbol_offset_y = 'Y Position:'
+title_symbol_offset_x = 'X Position:'
 title_font_size = 'Font Size:'
 src_grid_img = None
 result_grid = None
@@ -13,7 +14,7 @@ color_symbols = None
 
 
 def generate_color_symbol_dict(image_colors):
-    symbols = list("AXOT#5PVB9$º=@2LN/+")
+    symbols = list("AX<OT#5P·V/B9$@2L=N+")
     color_symbol_dict = {}
     for color in image_colors:
         c = (color[0], color[1], color[2])
@@ -36,7 +37,8 @@ def mark_image_colors(val):
     global img_contours
     global color_symbols
 
-    offset = cv.getTrackbarPos(title_symbol_offset, window_name)
+    offset_x = cv.getTrackbarPos(title_symbol_offset_x, window_name)
+    offset_y = cv.getTrackbarPos(title_symbol_offset_y, window_name)
     font_size = cv.getTrackbarPos(title_font_size, window_name)
 
     result_grid = src_grid_img.copy()
@@ -46,7 +48,7 @@ def mark_image_colors(val):
         x, y, w, h = rect
         pixel = src_img[y + int(h / 2), x + int(w / 2)]
         col = (int(pixel[0]), int(pixel[1]), int(pixel[2]))
-        cv.putText(result_grid, color_symbols[tuple(col)], (x, y + offset),
+        cv.putText(result_grid, color_symbols[tuple(col)], (x + offset_x, y + offset_y),
                     fontFace=cv.FONT_HERSHEY_SIMPLEX, fontScale=font_size/10,
                     color=tuple(col), thickness=1)
     cv.imshow(window_name, result_grid)
@@ -65,7 +67,8 @@ def tag_image_colors(src, src_grid, src_colors):
     color_symbols = generate_color_symbol_dict(src_colors)
 
     cv.namedWindow(window_name)
-    cv.createTrackbar(title_symbol_offset, window_name, 1, max_symbol_offset, mark_image_colors)
+    cv.createTrackbar(title_symbol_offset_x, window_name, 1, max_symbol_offset, mark_image_colors)
+    cv.createTrackbar(title_symbol_offset_y, window_name, 1, max_symbol_offset, mark_image_colors)
     cv.createTrackbar(title_font_size, window_name, 1, max_font_size, mark_image_colors)
     mark_image_colors(0)
     cv.waitKey()

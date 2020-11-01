@@ -81,9 +81,9 @@ def print_lines(vertical: bool, lower_limit: int, upper_limit: int,
 
     while point < upper_limit:
         if vertical:
-            cv.line(result_img, (point, 0), (point, line_length), (0, 0, 0), 2)
+            cv.line(result_img, (point, 0), (point, line_length), (0, 0, 0), 1)
         else:
-            cv.line(result_img, (0, point), (line_length, point), (0, 0, 0), 2)
+            cv.line(result_img, (0, point), (line_length, point), (0, 0, 0), 1)
         point += diff
 
 

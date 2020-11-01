@@ -105,7 +105,7 @@ def find_grid(img):
 def main():
     global image_colors
 
-    img_path = "yoshi.png"
+    img_path = "mario-kart.png"
     img = cv2.imread(img_path, cv2.IMREAD_COLOR)
 
     img_without_black = replace_black_color(img)
