@@ -115,6 +115,7 @@ def main():
 
     unified_img = unify_similar_colors(opened_img, 4)
     image_colors = extract_image_colors(unified_img)
+    cv2.imshow("unified_image", unified_img)
 
     grid_pattern = find_grid(unified_img)
 
