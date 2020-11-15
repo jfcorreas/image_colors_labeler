@@ -26,26 +26,13 @@ def replace_black_color(img):
     return img
 
 
-def opening_colors(img, radius: int):
-    combined_mask = 0
-
-    for c in image_colors:
-        mask = cv2.inRange(img, c, c)
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (radius, radius))
-        opened_mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-        combined_mask = combined_mask | opened_mask
-
-    masked_image = cv2.bitwise_and(img, img, mask=combined_mask)
-
-    return masked_image
-
-
 def unify_similar_colors(img, delta_threshold: int):
     rgb_image_array = np.array(img)
 
     lab = rgb2lab(img)
 
     for color in image_colors:
+        print(".")
         color_3d = np.uint8(np.asarray([[color]]))
         dE_color = deltaE_cie76(rgb2lab(color_3d), lab)
         rgb_image_array[dE_color < delta_threshold] = color_3d
@@ -78,19 +65,6 @@ def show_colors_list(img):
     plt.show()
 
 
-def pick_color(event, x, y, flags, param):
-    if event == cv2.EVENT_LBUTTONDOWN:
-        pixel = image_colors[y, x]
-
-        # you might want to adjust the ranges(+-10, etc):
-        upper = np.array([pixel[0] + 1, pixel[1] + 1, pixel[2] + 1])
-        lower = np.array([pixel[0] - 1, pixel[1] - 1, pixel[2] - 1])
-        print(pixel, lower, upper)
-
-        image_mask = cv2.inRange(image_colors, lower, upper)
-        cv2.imshow("mask", image_mask)
-
-
 def find_grid(img):
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -99,38 +73,34 @@ def find_grid(img):
     edges = dilate_and_erode(edges)
     grid_pattern = detect_lines(edges)
 
+    grid_pattern = dilate_and_erode(grid_pattern)
+
     return grid_pattern
 
 
 def main():
     global image_colors
 
-    img_path = "mario-kart.png"
+    img_path = "images/mario-kart_16c.png"
+    grid_path = "images/mario-kart_grid.png"
     img = cv2.imread(img_path, cv2.IMREAD_COLOR)
+    grid_img = cv2.imread(grid_path, cv2.IMREAD_COLOR)
 
     img_without_black = replace_black_color(img)
+    cv2.imshow("without_black", img_without_black)
+    cv2.waitKey(20)
     image_colors = extract_image_colors(img_without_black)
 
-    opened_img = opening_colors(img_without_black, 3)
-
-    unified_img = unify_similar_colors(opened_img, 4)
+    unified_img = unify_similar_colors(img_without_black, 4)
     image_colors = extract_image_colors(unified_img)
-    cv2.imshow("unified_image", unified_img)
+    cv2.imshow(f"unified_image: {len(image_colors)} colors", unified_img)
+    cv2.waitKey(20)
 
-    grid_pattern = find_grid(unified_img)
+    grid_pattern = find_grid(grid_img)
 
     analyzed_grid = tag_image_colors(unified_img, grid_pattern, image_colors)
     cv2.imshow("Analyzed Grid Pattern", analyzed_grid)
-
-
-    #show_colors_list(unified_img)
-
-    # cv2.namedWindow('unified_image')
-    # cv2.setMouseCallback('unified_image', pick_color)
-
-    # now click into the hsv img , and look at values:
-    # image_colors = cv2.cvtColor(unified_img, cv2.COLOR_BGR2RGB)
-    # cv2.imshow("unified_image", image_colors)
+    cv2.waitKey(20)
 
     cv2.waitKey(0)
     cv2.destroyAllWindows()

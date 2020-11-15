@@ -14,7 +14,7 @@ color_symbols = None
 
 
 def generate_color_symbol_dict(image_colors):
-    symbols = list("AX<OT#5P·V/B9$@2L=N+")
+    symbols = list("A=XO+T5#P9B>vL2N")
     color_symbol_dict = {}
     for color in image_colors:
         c = (color[0], color[1], color[2])

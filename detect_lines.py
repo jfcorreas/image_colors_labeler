@@ -4,7 +4,7 @@ import numpy as np
 max_line_gap_limit = 30
 window_name = 'Pattern Map'
 title_trackbar_gap = 'Max Line Gap:'
-result_img = None
+hough_img = None
 src_img = None
 vertical_lines = None
 horizontal_lines = None
@@ -24,6 +24,7 @@ def is_vertical_line(x0, y0, x1, y1):
 
 def hough_lines(val):
     global src_img
+    global hough_img
     global vertical_lines
     global horizontal_lines
 
@@ -55,52 +56,9 @@ def hough_lines(val):
     cv.imshow(window_name, hough_img)
 
 
-def get_draw_guide(coord: list):
-    guide = [None]*2
-    min_difference = coord[len(coord)-1]*10
-    last_point = 0
-    for point in coord:
-        diff = point - last_point
-        if min_difference is not None and diff < min_difference:
-            guide[0] = point
-            guide[1] = diff
-            min_difference = diff
-        last_point = point
-    return guide
-
-
-def print_lines(vertical: bool, lower_limit: int, upper_limit: int,
-                line_length: int, guide: list):
-    global result_img
-
-    point = guide[0]
-    diff = guide[1]
-
-    while point >= lower_limit + diff:
-        point -= diff
-
-    while point < upper_limit:
-        if vertical:
-            cv.line(result_img, (point, 0), (point, line_length), (0, 0, 0), 1)
-        else:
-            cv.line(result_img, (0, point), (line_length, point), (0, 0, 0), 1)
-        point += diff
-
-
-def make_grid(guidex, guidey):
-    global result_img
-    global src_img
-
-    height, width = src_img.shape
-    result_img = 255 * np.ones(shape=[height, width, 3], dtype=np.uint8)
-
-    print_lines(True, 0, width, height, guidex)
-    print_lines(False, 0, height, width, guidey)
-
-
 def detect_lines(src):
-    global result_img
     global src_img
+    global hough_img
     global vertical_lines
     global horizontal_lines
 
@@ -110,9 +68,4 @@ def detect_lines(src):
     hough_lines(0)
     cv.waitKey()
 
-    guidex = get_draw_guide(sorted(vertical_lines))
-    guidey = get_draw_guide((sorted(horizontal_lines)))
-
-    make_grid(guidex, guidey)
-
-    return result_img
+    return hough_img
