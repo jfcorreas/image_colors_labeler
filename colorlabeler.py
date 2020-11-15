@@ -32,7 +32,6 @@ def unify_similar_colors(img, delta_threshold: int):
     lab = rgb2lab(img)
 
     for color in image_colors:
-        print(".")
         color_3d = np.uint8(np.asarray([[color]]))
         dE_color = deltaE_cie76(rgb2lab(color_3d), lab)
         rgb_image_array[dE_color < delta_threshold] = color_3d
@@ -66,7 +65,6 @@ def show_colors_list(img):
 
 
 def find_grid(img):
-
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     edges = canny_image(gray)
@@ -80,15 +78,16 @@ def find_grid(img):
 
 def main():
     global image_colors
+    img_ext = "png"
+    img_name = "seta_8c"
 
-    img_path = "images/mario-kart_16c.png"
-    grid_path = "images/mario-kart_grid.png"
+    img_path = f"images/{img_name}.{img_ext}"
     img = cv2.imread(img_path, cv2.IMREAD_COLOR)
+
+    grid_path = "images/seta_8c.png"
     grid_img = cv2.imread(grid_path, cv2.IMREAD_COLOR)
 
     img_without_black = replace_black_color(img)
-    cv2.imshow("without_black", img_without_black)
-    cv2.waitKey(20)
     image_colors = extract_image_colors(img_without_black)
 
     unified_img = unify_similar_colors(img_without_black, 4)
@@ -99,10 +98,8 @@ def main():
     grid_pattern = find_grid(grid_img)
 
     analyzed_grid = tag_image_colors(unified_img, grid_pattern, image_colors)
-    cv2.imshow("Analyzed Grid Pattern", analyzed_grid)
-    cv2.waitKey(20)
 
-    cv2.waitKey(0)
+    cv2.imwrite(f"images/patterns/{img_name}_pattern.{img_ext}", analyzed_grid)
     cv2.destroyAllWindows()
 
 
